@@ -23,24 +23,30 @@ jobs:
       - name: Create unique bucket name
         id: bucket
         run: |
-          BUCKET="aditi-s3-bucket-github-actions"
+          BUCKET="aditi-s3-${GITHUB_RUN_ID}-${AWS_REGION}"
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "Using bucket: $BUCKET"
 
       - name: Create S3 bucket
         run: |
           BUCKET="${{ steps.bucket.outputs.bucket }}"
-          aws s3api create-bucket \
-            --bucket "$BUCKET" \
-            --region "$AWS_REGION" \
-            --create-bucket-configuration LocationConstraint="$AWS_REGION"
+          echo "Creating bucket: $BUCKET in region: $AWS_REGION"
+
+          if [ "$AWS_REGION" = "us-east-1" ]; then
+            aws s3api create-bucket --bucket "$BUCKET" --region "$AWS_REGION"
+          else
+            aws s3api create-bucket \
+              --bucket "$BUCKET" \
+              --region "$AWS_REGION" \
+              --create-bucket-configuration LocationConstraint="$AWS_REGION"
+          fi
 
       - name: Upload files from specific directory
         run: |
           BUCKET="${{ steps.bucket.outputs.bucket }}"
-          aws s3 cp "$UPLOAD_DIR/" "s3://$BUCKET/$UPLOAD_DIR/" --recursive
+          aws s3 cp "${UPLOAD_DIR}/" "s3://$BUCKET/${UPLOAD_DIR}/" --recursive
 
       - name: Confirm upload
         run: |
           BUCKET="${{ steps.bucket.outputs.bucket }}"
-          aws s3 ls "s3://$BUCKET/$UPLOAD_DIR/"
+          aws s3 ls "s3://$BUCKET/${UPLOAD_DIR}/"
