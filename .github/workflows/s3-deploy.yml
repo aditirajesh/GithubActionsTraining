@@ -10,7 +10,7 @@ jobs:
     runs-on: [self-hosted, linux, x64]
 
     env:
-      AWS_REGION: ap-south-1
+      AWS_REGION: us-east-1
       UPLOAD_DIR: uploads
 
     steps:
@@ -23,7 +23,7 @@ jobs:
       - name: Create unique bucket name
         id: bucket
         run: |
-          BUCKET="gh-ec2-runner-${GITHUB_REPOSITORY_OWNER,,}-${GITHUB_RUN_ID}-${AWS_REGION}"
+          BUCKET="aditi-s3-bucket-github-actions"
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "Using bucket: $BUCKET"
 
