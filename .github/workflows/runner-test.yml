@@ -1,0 +1,19 @@
+name: self-hosted runner smoke test
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - name: Basic info
+        run: |
+          echo "Runner name: $RUNNER_NAME"
+          echo "OS: $RUNNER_OS"
+          echo "Arch: $RUNNER_ARCH"
+          hostname
+          whoami
+      - name: Tool check
+        run: |
+          git --version
+          curl --version
