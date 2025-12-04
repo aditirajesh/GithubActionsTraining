@@ -1,0 +1,46 @@
+name: Create S3 bucket and upload repo file (main only)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  s3_deploy:
+    runs-on: [self-hosted, linux, x64]
+
+    env:
+      AWS_REGION: us-east-1
+      UPLOAD_DIR: uploads
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify AWS identity (instance role)
+        run: aws sts get-caller-identity
+
+      - name: Create unique bucket name
+        id: bucket
+        run: |
+          BUCKET="aditi-s3-bucket-github-actions"
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+          echo "Using bucket: $BUCKET"
+
+      - name: Create S3 bucket
+        run: |
+          BUCKET="${{ steps.bucket.outputs.bucket }}"
+          aws s3api create-bucket \
+            --bucket "$BUCKET" \
+            --region "$AWS_REGION" \
+            --create-bucket-configuration LocationConstraint="$AWS_REGION"
+
+      - name: Upload files from specific directory
+        run: |
+          BUCKET="${{ steps.bucket.outputs.bucket }}"
+          aws s3 cp "$UPLOAD_DIR/" "s3://$BUCKET/$UPLOAD_DIR/" --recursive
+
+      - name: Confirm upload
+        run: |
+          BUCKET="${{ steps.bucket.outputs.bucket }}"
+          aws s3 ls "s3://$BUCKET/$UPLOAD_DIR/"
