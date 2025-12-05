@@ -1,0 +1,61 @@
+name: Create S3 bucket and upload repo file (main only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, stage, prod]
+        required: true
+
+jobs:
+  s3_deploy:
+    runs-on: [self-hosted, linux, x64]
+    environment: ${{ inputs.environment }}
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      UPLOAD_DIR: uploads
+      BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify AWS identity (instance role)
+        run: aws sts get-caller-identity
+
+      - name: Create s3 bucket and enable versioning if prod
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+            echo "Bucket exists: $BUCKET_NAME"
+          else
+            echo "Creating bucket: $BUCKET_NAME"
+            # For most regions you must pass a LocationConstraint; us-east-1 is special
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+              aws s3api create-bucket --bucket "$BUCKET_NAME"
+            else
+              aws s3api create-bucket --bucket "$BUCKET_NAME" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION"
+            fi
+          fi
+
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "Enabling versioning (prod)"
+            aws s3api put-bucket-versioning --bucket "$BUCKET_NAME" \
+              --versioning-configuration Status=Enabled
+          else
+            echo "Not enabling versioning (non-prod)"
+          fi
+
+      - name: Upload files from specific directory
+        run: |
+          aws s3 cp "${UPLOAD_DIR}/" "s3://$BUCKET_NAME/${UPLOAD_DIR}/" --recursive
+
+      - name: Confirm upload
+        run: |
+          BUCKET="${{ steps.bucket.outputs.bucket }}"
+          aws s3 ls "s3://$BUCKET/${UPLOAD_DIR}/"
