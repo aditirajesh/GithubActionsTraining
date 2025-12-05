@@ -19,5 +19,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: docker-image/dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/my-githubaction-image:latest
